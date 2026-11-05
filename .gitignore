@@ -1,0 +1,24 @@
+# Build outputs
+app/build/
+backend/*.so
+AirSane-build/
+scanapi/probe
+scanapi/layout
+scanapi/scantest
+scanapi/hold
+tools/list-scanners
+tools/icscan
+
+# Machine-specific: the signing identity app/build.sh uses (falls back to ad hoc without it)
+config/signing
+
+# Local runs and captures (the engine log holds local paths and machine details)
+logs/
+scans/
+sane.d/test.conf
+
+# Reverse-engineering notes and anything extracted from Plustek's binaries stay out of this repository
+re/
+
+.DS_Store
+*.dSYM/

@@ -1,0 +1,3 @@
+[submodule "AirSane"]
+	path = AirSane
+	url = https://github.com/SimulPiscator/AirSane.git
