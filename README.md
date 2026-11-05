@@ -3,7 +3,7 @@
 Use the **Plustek ePhoto Z300** photo scanner on macOS outside Plustek's ePhoto app:
 
 - **Z300 Scan**, a menu-bar app: insert a photo or page, a panel asks *Photo* or *Document*, and the scan lands on
-  the Desktop (or, at a tick, in another folder such as a network share) as JPEG/PNG/TIFF or as a (multi-page,
+  the Desktop (or, at a tick, in a folder you choose, such as a network share) as JPEG/PNG/TIFF or as a (multi-page,
   searchable) PDF. Tilted items are straightened and cropped.
 - **A SANE driver behind AirSane**: the scanner appears in Preview, Image Capture and any other app that scans
   through macOS, as the feeder scanner "Plustek ePhoto Z300".
@@ -69,10 +69,11 @@ prompt nobody would see.
   grey, searchable text by macOS's on-device text recognition); press Scan. Both can straighten items fed in at an
   angle. For a document, insert further pages when asked, then Save PDF. The menu-bar icon shows the state and
   holds the colour settings.
-- **Another folder**: `defaults write z300bridge.scan otherFolder /Volumes/scans` adds a checkbox to the panel
-  to save there instead of on the Desktop. While the folder's volume is not mounted the checkbox is greyed out; if
-  the folder cannot take a scan (say, the share went away), the scan goes to the Desktop and the notification says
-  so. For a network share, macOS asks once for the app's permission to access network volumes.
+- **Another folder**: the checkbox below the options saves scans to another folder instead of the Desktop, such
+  as a network share; **Choose…** next to it picks the folder, which is remembered. While the folder's volume is
+  not mounted the checkbox is greyed out; if the folder cannot take a scan (say, the share went away), the scan
+  goes to the Desktop and the notification says so. For a network share, macOS asks once for the app's permission
+  to access network volumes.
 - **Preview / Image Capture**: File > Import from "Plustek ePhoto Z300". It is a feeder: the driver waits 60 s for
   the first photo and 10 s for each further one of the same batch. Quit ePhoto first.
 - **Colour**: raw scans are oversaturated and dark. The defaults, chosen by eye on photo scans, are 15% less

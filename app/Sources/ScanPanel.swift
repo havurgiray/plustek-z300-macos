@@ -28,7 +28,9 @@ final class ScanPanel: NSPanel, NSWindowDelegate {
     private let docStraighten = NSButton(checkboxWithTitle: "Straighten if fed in at an angle", target: nil, action: nil)
     private let docSearchable = NSButton(checkboxWithTitle: "Searchable text (recognized on this Mac)", target: nil, action: nil)
     private let saveToOther = NSButton(checkboxWithTitle: "", target: nil, action: nil)
+    private let chooseFolder = NSButton(title: "Choose…", target: nil, action: nil)
     private var otherReachable = false
+    private var otherTitleWidth: CGFloat = 0   // room for saveToOther's title next to chooseFolder
     private var photoOptions = NSView(), docOptions = NSView(), folderOptions = NSView()
     private let status = NSTextField(labelWithString: "")
     private let spinner = NSProgressIndicator()
@@ -36,8 +38,10 @@ final class ScanPanel: NSPanel, NSWindowDelegate {
     private let saveButton = NSButton(title: "Save PDF", target: nil, action: nil)
     private let scanButton = NSButton(title: "Scan", target: nil, action: nil)
 
+    private static let width: CGFloat = 500
+
     init() {
-        super.init(contentRect: NSRect(x: 0, y: 0, width: 400, height: 260), styleMask: [.titled, .closable],
+        super.init(contentRect: NSRect(x: 0, y: 0, width: Self.width, height: 260), styleMask: [.titled, .closable],
                    backing: .buffered, defer: false)
         title = "Z300 Scan"
         level = .floating
@@ -57,7 +61,10 @@ final class ScanPanel: NSPanel, NSWindowDelegate {
                                  labelWidth: labelWidth)
         docOptions = Self.grid([("Resolution:", docDPI), ("Colour:", docColor), ("", docStraighten), ("", docSearchable)],
                                labelWidth: labelWidth)
-        folderOptions = Self.grid([("", saveToOther)], labelWidth: labelWidth)
+        let folderRow = NSStackView(views: [saveToOther, chooseFolder])
+        folderRow.spacing = 8
+        let folderGrid = Self.grid([("", folderRow)], labelWidth: labelWidth)
+        folderOptions = folderGrid
         status.textColor = .secondaryLabelColor
         status.lineBreakMode = .byWordWrapping
         status.maximumNumberOfLines = 3
@@ -66,7 +73,8 @@ final class ScanPanel: NSPanel, NSWindowDelegate {
         spinner.controlSize = .small
         spinner.isDisplayedWhenStopped = false
 
-        for (button, action) in [(cancelButton, #selector(cancelPressed)), (saveButton, #selector(savePDF)), (scanButton, #selector(scan))] {
+        for (button, action) in [(cancelButton, #selector(cancelPressed)), (saveButton, #selector(savePDF)), (scanButton, #selector(scan)),
+                                 (chooseFolder, #selector(chooseOtherFolder))] {
             button.target = self
             button.action = action
             button.bezelStyle = .rounded
@@ -82,7 +90,8 @@ final class ScanPanel: NSPanel, NSWindowDelegate {
         stack.setCustomSpacing(10, after: photoOptions)
         stack.setCustomSpacing(10, after: docOptions)
         stack.edgeInsets = NSEdgeInsets(top: 18, left: 20, bottom: 18, right: 20)
-        stack.widthAnchor.constraint(equalToConstant: 400).isActive = true
+        stack.widthAnchor.constraint(equalToConstant: Self.width).isActive = true
+        otherTitleWidth = Self.width - 40 - labelWidth - folderGrid.columnSpacing - folderRow.spacing - chooseFolder.fittingSize.width
         buttons.widthAnchor.constraint(equalTo: stack.widthAnchor, constant: -40).isActive = true
         contentView = stack
         delegate = self
@@ -181,22 +190,37 @@ final class ScanPanel: NSPanel, NSWindowDelegate {
             control.isEnabled = on
         }
         saveToOther.isEnabled = on && otherReachable
+        chooseFolder.isEnabled = on
     }
 
-    /// The checkbox for the other folder (Folders.other): hidden without one, unticked and disabled while it
-    /// is not connected. Checked each time the panel opens, since shares come and go.
+    /// The checkbox for the other folder (Folders.other, picked with Choose…): disabled until one is chosen,
+    /// unticked and disabled while it is not connected. Checked each time the panel opens, since shares come
+    /// and go.
     private func refreshOtherFolder() {
         guard let folder = Folders.other else {
-            folderOptions.isHidden = true
             otherReachable = false
+            saveToOther.title = "Save to another folder"
+            saveToOther.toolTip = "Use Choose… to pick a folder to save scans in instead of the Desktop."
+            saveToOther.state = .off
             return
         }
-        folderOptions.isHidden = false
         otherReachable = Folders.isReachable(folder)
-        saveToOther.title = otherReachable ? "Save to “\(folder.lastPathComponent)” instead of the Desktop"
-            : "Save to “\(folder.lastPathComponent)” (not connected)"
+        setOtherTitle(folder.lastPathComponent, suffix: otherReachable ? " instead of the Desktop" : " (not connected)")
         saveToOther.toolTip = folder.path
         saveToOther.state = otherReachable && defaults.bool(forKey: "saveToOther") ? .on : .off
+    }
+
+    /// "Save to “name” instead of the Desktop", with a long folder name shortened in the middle until the
+    /// title fits next to the Choose… button.
+    private func setOtherTitle(_ name: String, suffix: String) {
+        var shown = name
+        var keep = name.count
+        while true {
+            saveToOther.title = "Save to “\(shown)”\(suffix)"
+            guard saveToOther.fittingSize.width > otherTitleWidth, keep > 4 else { return }
+            keep -= 1
+            shown = String(name.prefix((keep + 1) / 2)) + "…" + String(name.suffix(keep / 2))
+        }
     }
 
     // MARK: actions
@@ -214,6 +238,27 @@ final class ScanPanel: NSPanel, NSWindowDelegate {
     }
 
     @objc private func savePDF() { onSavePDF?() }
+
+    /// Picks the folder for the checkbox. It is remembered (defaults key otherFolder) and ticked.
+    @objc private func chooseOtherFolder() {
+        let open = NSOpenPanel()
+        open.canChooseFiles = false
+        open.canChooseDirectories = true
+        open.canCreateDirectories = true
+        open.allowsMultipleSelection = false
+        open.prompt = "Choose"
+        open.message = "Choose where to save scans instead of the Desktop."
+        open.directoryURL = Folders.other.flatMap { Folders.isReachable($0) ? $0 : nil }
+            ?? FileManager.default.homeDirectoryForCurrentUser
+        open.beginSheetModal(for: self) { [weak self] response in
+            guard let self, response == .OK, let url = open.url else { return }
+            defaults.set(url.path, forKey: "otherFolder")
+            defaults.set(true, forKey: "saveToOther")
+            refreshOtherFolder()
+            saveToOther.isEnabled = otherReachable
+            fitToContent()
+        }
+    }
 
     @objc private func cancelPressed() { onCancel?() }
 

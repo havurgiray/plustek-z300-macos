@@ -1,8 +1,8 @@
 import Foundation
 
-/// Where scans go: the Desktop, or the other folder set with
-/// `defaults write z300bridge.scan otherFolder /Volumes/scans` (a network share, for example), which the scan
-/// panel then offers as a checkbox.
+/// Where scans go: the Desktop, or another folder (a network share, for example) when the scan panel's
+/// checkbox is ticked. The folder is picked with the panel's Choose… button and kept in the defaults key
+/// `otherFolder`.
 enum Folders {
     static let desktop = FileManager.default.urls(for: .desktopDirectory, in: .userDomainMask)[0]
 
